@@ -8,7 +8,11 @@
         @keyup.enter="searchTicker"
       />
       <div class="btn btn-info" @click="searchTicker">search</div>
-      <app-coins-result :search-result='matchingTicker' @setTicker="setTicker"/>
+      <app-coins-result
+        v-if="matchingTicker?.length"
+        :search-result="matchingTicker"
+        @setTicker="setTicker"
+      />
       <span class="error">{{ error }}</span>
     </div>
     <div class="second-row row">
@@ -21,12 +25,13 @@
       >
         <h2>{{ item.ticker }} to USD</h2>
         <p>{{ item.price }}</p>
-        <button @click="deleteTicker(idx)">delete</button>
+        <button @click.stop="deleteTicker(item, idx)">delete</button>
+        <div @click="fixTicker(item)">zakr</div>
       </div>
     </div>
     <div v-if="sel" class="third-row">
       <div class="graph-wrp">
-        <h2>{{ sel.ticker }} to USD</h2>
+        <h2>{{ sel.ticker || sel.Symbol }} to USD</h2>
         <div class="graph">
           <div
             v-for="(bar, idx) in normalizeGraph()"
@@ -47,21 +52,12 @@ export default {
   data() {
     return {
       ticker: null,
-      tickers: [
-        {
-          ticker: 'demo',
-          price: '123',
-        },
-        {
-          ticker: 'demo2',
-          price: '123',
-        },
-      ],
+      tickers: [],
       sel: null,
       graph: [],
       matchingTicker: null,
       error: null,
-      intervals: []
+      fixed_tickers: [],
     }
   },
   computed: {
@@ -85,15 +81,24 @@ export default {
   created() {
     this.$store.dispatch('coins/fetchCoinsList')
   },
+  mounted() {
+    this.setData()
+  },
   methods: {
+    setData() {
+      if (process.browser && localStorage) {
+        this.tickers.push(...JSON.parse(localStorage?.fixed_tickers))
+      }
+    },
     searchTicker() {
       if (!this.tickers.find((el) => el.ticker === this.ticker)) {
         const currentTicker = {
           ticker: this.ticker,
           price: '-',
+          interval_ticker: '',
         }
         this.tickers.push(currentTicker)
-        currentTicker.ticker = setInterval(async () => {
+        currentTicker.interval_ticker = setInterval(async () => {
           const { data } = await this.$axios.get(
             `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.ticker}&tsyms=USD&api_key=d580e57d5249755e75ac50f672d6a99a3b607971503abb8373efd9ecc6039ac6`
           )
@@ -102,17 +107,20 @@ export default {
               (el) => el.ticker === currentTicker.ticker
             ).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toFixed(4)
 
-            if (this.sel?.ticker === currentTicker.ticker) {
+            if (
+              this.sel?.ticker === currentTicker.ticker ||
+              this.sel?.Symbol === currentTicker.ticker
+            ) {
               this.graph.push(data.USD)
             }
           } else {
-            this.error='coin dont exist'
+            this.error = 'coin dont exist'
           }
         }, 4000)
 
         this.ticker = ''
-      } else{
-        this.error='coin is exist'
+      } else {
+        this.error = 'coin is exist'
       }
     },
     normalizeGraph() {
@@ -122,18 +130,24 @@ export default {
         (el) => ((el - minValue) * 100) / (maxValue - minValue)
       )
     },
-    deleteTicker(idx) {
+    deleteTicker(item, idx) {
       this.tickers.splice(idx, 1)
-
+      clearInterval(item.interval_ticker)
+      this.sel = null
     },
     selectedTicker(ticker) {
       this.sel = ticker
       this.graph = []
     },
-    setTicker(coin){
+    setTicker(coin) {
       this.sel = coin
+      this.ticker = coin.Symbol
       this.searchTicker()
-    }
+    },
+    fixTicker(item) {
+      this.fixed_tickers.push(item)
+      localStorage.fixed_tickers = JSON.stringify(this.fixed_tickers)
+    },
   },
 }
 </script>

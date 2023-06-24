@@ -1,7 +1,7 @@
 <template>
   <div>
     <ul class='list_res'>
-      <li v-for="(item, idx) in searchResult" :key="idx" @click="$emit('setTicker', item.FullName)">
+      <li v-for="(item, idx) in searchResult" :key="idx" @click="$emit('setTicker', item)">
         {{ item.FullName }}
       </li>
     </ul>
@@ -25,5 +25,8 @@ export default {
   position: absolute;
   top: 39px;
   left: 0;
+  overflow-y: scroll;
+  height: 350px;
+  width: 100%;
 }
 </style>
