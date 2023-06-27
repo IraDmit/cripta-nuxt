@@ -1,47 +1,52 @@
 <template>
   <div class="container">
-    <div class="first-row">
-      <input
-        v-model="ticker"
-        type="text"
-        class="form-control"
-        @keyup.enter="searchTicker"
-      />
+    <section class="first-row">
+      <div class="search">
+        <input
+          v-model="ticker"
+          type="text"
+          class="form-control"
+          @keyup.enter="searchTicker"
+        />
+        <app-coins-result
+          v-if="matchingTicker?.length"
+          :search-result="matchingTicker"
+          @setTicker="setTicker"
+        />
+      </div>
       <div class="btn btn-info" @click="searchTicker">search</div>
-      <app-coins-result
-        v-if="matchingTicker?.length"
-        :search-result="matchingTicker"
-        @setTicker="setTicker"
-      />
       <span class="error">{{ error }}</span>
-    </div>
-    <div class="second-row row">
+    </section>
+    <section class="second-row row">
+      <input v-model="filter" type="text" />
       <div
-        v-for="(item, idx) in tickers"
+        v-for="(item, idx) in paginatedTickers"
         :key="idx"
-        class="col-xxl-3 col-md-4 col-6"
+        class="ticker col-md-4 col-6"
         :class="{ selected: item.ticker === sel?.ticker }"
         @click="selectedTicker(item)"
       >
         <h2>{{ item.ticker }} to USD</h2>
         <p>{{ item.price }}</p>
         <button @click.stop="deleteTicker(item, idx)">delete</button>
-        <div @click="fixTicker(item)">zakr</div>
+        <div class="fix" @click="fixTicker(item)">zakr</div>
       </div>
-    </div>
-    <div v-if="sel" class="third-row">
+      <div v-if="isNext" class="next" @click="nextPage()">next</div>
+      <div v-if="isPrev" class="prev" @click="prevPage()">prev</div>
+    </section>
+    <section v-if="sel" class="third-row">
       <div class="graph-wrp">
         <h2>{{ sel.ticker || sel.Symbol }} to USD</h2>
         <div class="graph">
           <div
-            v-for="(bar, idx) in normalizeGraph()"
+            v-for="(bar, idx) in normalizeGraph"
             :key="idx"
             class="bar"
             :style="{ height: `${bar}%` }"
           ></div>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -51,17 +56,139 @@ export default {
   name: 'IndexPage',
   data() {
     return {
+      page: this.$route.query.page ? +this.$route.query.page : 1,
       ticker: null,
-      tickers: [],
+      tickers: [
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo1',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo2',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo3',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+        {
+          ticker: 'demo',
+          price: '-',
+        },
+      ],
       sel: null,
       graph: [],
       matchingTicker: null,
       error: null,
       fixed_tickers: [],
+      tickers_on_page: 6,
+      filter: this.$route.query.filter ? this.$route.query.filter : '',
     }
   },
   computed: {
     ...mapGetters({ getCoinsList: 'coins/getCoinsList' }),
+    maxPage() {
+      return Math.ceil(this.tickers.length / this.tickers_on_page)
+    },
+    startIndex() {
+      return this.endIndex - this.tickers_on_page
+    },
+    endIndex() {
+      return this.page * this.tickers_on_page
+    },
+    filterTickers() {
+      return this.tickers.filter((el) => el.ticker.includes(this.filter))
+    },
+    paginatedTickers() {
+      return this.filterTickers.slice(this.startIndex, this.endIndex)
+    },
+    pageStateOptions() {
+      return {
+        page: this.page,
+        filter: this.filter,
+      }
+    },
+    normalizeGraph() {
+      const maxValue = Math.max(...this.graph)
+      const minValue = Math.min(...this.graph)
+      return this.graph.map(
+        (el) => ((el - minValue) * 100) / (maxValue - minValue)
+      )
+    },
+    isNext() {
+      return this.page < this.maxPage
+    },
+    isPrev() {
+      return this.page > 1
+    },
   },
   watch: {
     ticker() {
@@ -77,6 +204,20 @@ export default {
         }
       )
     },
+    pageStateOptions(value) {
+      let params = ''
+      if (value.filter && value.page > 1) {
+        params = `?filter=${value.filter}&page=${value.page}`
+      } else if (value.page > 1 && !value.filter) {
+        params = `?page=${value.page}`
+      } else if (value.filter && value.page === 1) {
+        params = `?filter=${value.filter}`
+      }
+      history.pushState({}, '', `${location.origin}${params}`)
+    },
+    filter() {
+      this.page = 1
+    },
   },
   created() {
     this.$store.dispatch('coins/fetchCoinsList')
@@ -86,7 +227,7 @@ export default {
   },
   methods: {
     setData() {
-      if (process.browser && localStorage) {
+      if (process.browser && localStorage && localStorage.fixed_tickers) {
         this.tickers.push(...JSON.parse(localStorage?.fixed_tickers))
       }
     },
@@ -123,13 +264,6 @@ export default {
         this.error = 'coin is exist'
       }
     },
-    normalizeGraph() {
-      const maxValue = Math.max(...this.graph)
-      const minValue = Math.min(...this.graph)
-      return this.graph.map(
-        (el) => ((el - minValue) * 100) / (maxValue - minValue)
-      )
-    },
     deleteTicker(item, idx) {
       this.tickers.splice(idx, 1)
       clearInterval(item.interval_ticker)
@@ -148,6 +282,16 @@ export default {
       this.fixed_tickers.push(item)
       localStorage.fixed_tickers = JSON.stringify(this.fixed_tickers)
     },
+    nextPage() {
+      if (this.page <= this.maxPage) {
+        this.page++
+      }
+    },
+    prevPage() {
+      if (this.page > 1) {
+        this.page--
+      }
+    },
   },
 }
 </script>
@@ -155,14 +299,34 @@ export default {
 .row {
   div {
     border: 1px solid red;
+    border-radius: 10px;
     &.selected {
       border: 2px solid #000;
     }
   }
 }
+
+section {
+  margin: 100px 0px;
+}
+
 .first-row {
   display: flex;
   position: relative;
+  .search {
+    width: 100%;
+  }
+}
+
+.second-row {
+  .ticker {
+    position: relative;
+    .fix {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+    }
+  }
 }
 
 .graph {
