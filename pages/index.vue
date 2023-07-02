@@ -6,7 +6,7 @@
           v-model="ticker"
           type="text"
           class="form-control"
-          @keyup.enter="searchTicker"
+          @keyup.enter="add"
         />
         <app-coins-result
           v-if="matchingTicker?.length"
@@ -14,7 +14,7 @@
           @setTicker="setTicker"
         />
       </div>
-      <div class="btn btn-info" @click="searchTicker">search</div>
+      <div class="btn btn-info" @click="add">search</div>
       <span class="error">{{ error }}</span>
     </section>
     <section class="second-row row">
@@ -52,98 +52,14 @@
 
 <script>
 import { mapGetters } from 'vuex'
+import { loadTicker } from '~/apis/api'
 export default {
   name: 'IndexPage',
   data() {
     return {
       page: this.$route.query.page ? +this.$route.query.page : 1,
       ticker: null,
-      tickers: [
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo1',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo2',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo3',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-        {
-          ticker: 'demo',
-          price: '-',
-        },
-      ],
+      tickers: [],
       sel: null,
       graph: [],
       matchingTicker: null,
@@ -221,6 +137,7 @@ export default {
   },
   created() {
     this.$store.dispatch('coins/fetchCoinsList')
+    setInterval(() => this.updateTickers(), 5000)
   },
   mounted() {
     this.setData()
@@ -231,38 +148,36 @@ export default {
         this.tickers.push(...JSON.parse(localStorage?.fixed_tickers))
       }
     },
-    searchTicker() {
-      if (!this.tickers.find((el) => el.ticker === this.ticker)) {
-        const currentTicker = {
-          ticker: this.ticker,
-          price: '-',
-          interval_ticker: '',
-        }
-        this.tickers.push(currentTicker)
-        currentTicker.interval_ticker = setInterval(async () => {
-          const { data } = await this.$axios.get(
-            `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.ticker}&tsyms=USD&api_key=d580e57d5249755e75ac50f672d6a99a3b607971503abb8373efd9ecc6039ac6`
-          )
-          if (!data.Response) {
-            this.tickers.find(
-              (el) => el.ticker === currentTicker.ticker
-            ).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toFixed(4)
-
-            if (
-              this.sel?.ticker === currentTicker.ticker ||
-              this.sel?.Symbol === currentTicker.ticker
-            ) {
-              this.graph.push(data.USD)
-            }
-          } else {
-            this.error = 'coin dont exist'
-          }
-        }, 4000)
-
-        this.ticker = ''
-      } else {
-        this.error = 'coin is exist'
+    add() {
+      const currentTicker = {
+        ticker: this.ticker,
+        price: '-',
       }
+      this.tickers.push(currentTicker)
+    },
+    async updateTickers() {
+      if (!this.tickers.length) return
+
+      const data = await loadTicker(this.tickers.map((el) => el.ticker))
+      // currentTicker.interval_ticker = setInterval(async () => {
+
+      this.tickers.forEach((ticker) => {
+        const price = data[ticker.ticker.toUpperCase()]
+        const normalPrice = 1 / price
+        const format =
+          normalPrice > 1 ? normalPrice.toFixed(2) : normalPrice.toFixed(4)
+        ticker.price = format
+      })
+
+      // if (
+      //   this.sel?.ticker === currentTicker.ticker ||
+      //   this.sel?.Symbol === currentTicker.ticker
+      // ) {
+      //   this.graph.push(data.USD)
+      // }
+      // }, 4000)
+
+      this.ticker = ''
     },
     deleteTicker(item, idx) {
       this.tickers.splice(idx, 1)
@@ -276,7 +191,7 @@ export default {
     setTicker(coin) {
       this.sel = coin
       this.ticker = coin.Symbol
-      this.searchTicker()
+      this.add()
     },
     fixTicker(item) {
       this.fixed_tickers.push(item)
