@@ -51,8 +51,8 @@
 </template>
 
 <script>
-import { mapGetters, mapActions, mapMutations } from 'vuex'
-import { loadTicker } from '~/apis/api'
+import { mapGetters, mapActions } from 'vuex'
+import { subscribeToTicker } from '~/apis/api'
 export default {
   name: 'IndexPage',
   data() {
@@ -70,7 +70,10 @@ export default {
     }
   },
   computed: {
-    ...mapGetters({ getCoinsList: 'coins/getCoinsList' }),
+    ...mapGetters({
+      getCoinsList: 'coins/getCoinsList',
+      getFixedTickers: 'fixed_tickers/getFixedTickers',
+    }),
     maxPage() {
       return Math.ceil(this.tickers.length / this.tickers_on_page)
     },
@@ -137,17 +140,19 @@ export default {
   },
   created() {
     this.$store.dispatch('coins/fetchCoinsList')
-    setInterval(() => this.updateTickers(), 5000)
+    // setInterval(() => this.updateTickers(), 5000)
+    this.updateLocalStorage()
   },
   mounted() {
     this.setData()
+    this.tickers.forEach(({ ticker }) => {
+      subscribeToTicker(ticker, (price) => {
+        console.log('change',ticker, price);
+      })
+    })
   },
   methods: {
-    ...mapActions({ updateFixedTickers: 'fixed_tickers/updateFixedTickers' }),
-    ...mapMutations({
-      removeItem: 'fixed_tickers/removeItem',
-      addItem: 'fixed_tickers/addItem',
-    }),
+    ...mapActions({ updateLocalStorage: 'fixed_tickers/updateLocalStorage' }),
     setData() {
       if (process.browser && localStorage && localStorage.fixed_tickers) {
         this.tickers.push(...JSON.parse(localStorage?.fixed_tickers))
@@ -156,30 +161,33 @@ export default {
     },
     add() {
       const currentTicker = {
-        ticker: this.ticker,
+        ticker: this.ticker.toUpperCase(),
         price: '-',
       }
       this.tickers.push(currentTicker)
-    },
-    async updateTickers() {
-      if (!this.tickers.length) return
-
-      const data = await loadTicker(this.tickers.map((el) => el.ticker))
-
-      this.tickers.forEach((ticker) => {
-        const price = data[ticker.ticker.toUpperCase()]
-
-        if (!price) {
-          ticker.price = '-'
-          return
-        }
-
-        ticker.price = price
-        this.drawGraph(ticker)
+      subscribeToTicker(currentTicker.ticker, () => {
+        console.log('123')
       })
-
-      this.ticker = ''
     },
+    // async updateTickers() {
+    //   if (!this.tickers.length) return
+
+    //   const data = await loadTicker(this.tickers.map((el) => el.ticker))
+
+    //   this.tickers.forEach((ticker) => {
+    //     const price = data[ticker.ticker.toUpperCase()]
+
+    //     if (!price) {
+    //       ticker.price = '-'
+    //       return
+    //     }
+
+    //     ticker.price = price
+    //     this.drawGraph(ticker)
+    //   })
+
+    //   this.ticker = ''
+    // },
     drawGraph(ticker) {
       if (
         this.sel?.ticker === ticker.ticker ||
@@ -194,6 +202,7 @@ export default {
       this.sel = null
     },
     selectedTicker(ticker) {
+      if (this.sel === ticker) return
       this.sel = ticker
       this.graph = []
     },
@@ -203,20 +212,15 @@ export default {
       this.add()
     },
     fixTicker(item, idx) {
-      console.log(this.fixed_tickers.find((el) => el.ticker === item.ticker))
       if (this.fixed_tickers.find((el) => el.ticker === item.ticker)) {
         this.fixed_tickers.splice(idx, 1)
-        console.log('remove');
-        this.removeItem(this.fixed_tickers, idx)
-        // this.updateFixedTickers(this.fixed_tickers)
+        localStorage.fixed_tickers = JSON.stringify(this.fixed_tickers)
+        this.updateLocalStorage()
       } else {
-        console.log('remove');
         this.fixed_tickers.push(item)
-        this.addItem(this.fixed_tickers)
-        // this.updateFixedTickers(this.fixed_tickers)
+        localStorage.fixed_tickers = JSON.stringify(this.fixed_tickers)
+        this.updateLocalStorage()
       }
-
-      localStorage.fixed_tickers = JSON.stringify(this.fixed_tickers)
     },
     nextPage() {
       if (this.page <= this.maxPage) {
@@ -230,9 +234,14 @@ export default {
     },
     formattingPrice(price) {
       if (price === '-') return '-'
-
       return price.USD > 1 ? price.USD.toFixed(2) : price.USD.toFixed(4)
     },
+    // TODO
+    // isFixed(ticker) {
+    //   if (!this.getFixedTickers.filter((item) => item.ticker === ticker.ticker)) {
+    //     return 'unpin'
+    //   }
+    // },
   },
 }
 </script>
@@ -266,6 +275,9 @@ section {
       position: absolute;
       top: 4px;
       right: 4px;
+      &.unpin {
+        background-color: green;
+      }
     }
   }
 }
