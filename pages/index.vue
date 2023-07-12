@@ -59,7 +59,12 @@ export default {
     return {
       page: this.$route.query.page ? +this.$route.query.page : 1,
       ticker: null,
-      tickers: [],
+      tickers: [
+        {
+          ticker: 'BTC',
+          price: '-'
+        }
+      ],
       sel: null,
       graph: [],
       matchingTicker: null,
@@ -147,7 +152,7 @@ export default {
     this.setData()
     this.tickers.forEach(({ ticker }) => {
       subscribeToTicker(ticker, (price) => {
-        console.log('change',ticker, price);
+        console.log('change',ticker, price.USD);
       })
     })
   },

@@ -5,13 +5,16 @@ const apiKey =
 const tickers = new Map()
 
 const loadTicker = async () => {
+  // if (tickers.size !== 0 ) return
   const { data } = await axios.get(
     `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${[
       ...tickers.keys(),
     ]}&tsyms=USD&api_key=${apiKey}`
   )
 
+
   Object.entries(data).forEach(([currency, newPrice]) => {
+    // console.log(newPrice);
     const handler = tickers.get(currency) || []
     handler.forEach((func) => func(newPrice))
   })
