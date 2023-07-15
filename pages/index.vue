@@ -59,12 +59,7 @@ export default {
     return {
       page: this.$route.query.page ? +this.$route.query.page : 1,
       ticker: null,
-      tickers: [
-        {
-          ticker: 'BTC',
-          price: '-'
-        }
-      ],
+      tickers: [],
       sel: null,
       graph: [],
       matchingTicker: null,
@@ -145,13 +140,13 @@ export default {
   },
   created() {
     this.$store.dispatch('coins/fetchCoinsList')
-    // setInterval(() => this.updateTickers(), 5000)
     this.updateLocalStorage()
   },
   mounted() {
     this.setData()
     this.tickers.forEach(({ ticker }) => {
-      subscribeToTicker(ticker, newPrice => this.updateTickers(ticker, newPrice)
+      subscribeToTicker(ticker, (newPrice) =>
+        this.updateTickers(ticker, newPrice)
       )
     })
   },
@@ -169,10 +164,16 @@ export default {
         price: '-',
       }
       this.tickers.push(currentTicker)
-      subscribeToTicker(currentTicker.ticker, newPrice => this.updateTickers(currentTicker.ticker, newPrice))
+      subscribeToTicker(currentTicker.ticker, (newPrice) =>
+        this.updateTickers(currentTicker.ticker, newPrice)
+      )
     },
-    updateTickers(ticker, price){
-      this.tickers.filter((item) => item.ticker === ticker).price = price
+    updateTickers(ticker, price) {
+      this.tickers
+        .filter((item) => item.ticker === ticker)
+        .forEach((t) => {
+          t.price = price
+        })
     },
     // async updateTickers() {
     //   if (!this.tickers.length) return
@@ -202,7 +203,7 @@ export default {
       }
     },
     deleteTicker(tickerToRemove) {
-      this.tickers = this.tickers.filter(t => t !== tickerToRemove)
+      this.tickers = this.tickers.filter((t) => t !== tickerToRemove)
       unsubscribeFormTicker(tickerToRemove.ticker)
       this.sel = null
     },
@@ -239,7 +240,8 @@ export default {
     },
     formattingPrice(price) {
       if (price === '-') return '-'
-      return price.USD > 1 ? price.USD.toFixed(2) : price.USD.toFixed(4)
+      return price
+      // return price > 1 ? price.toFixed(2) : price.toFixed(4)
     },
     // TODO
     // isFixed(ticker) {
