@@ -28,7 +28,7 @@
       >
         <h2>{{ item.ticker }} to USD</h2>
         <p>{{ formattingPrice(item.price) }}</p>
-        <button @click.stop="deleteTicker(item, idx)">delete</button>
+        <button @click.stop="deleteTicker(item)">delete</button>
         <div class="fix" @click="fixTicker(item, idx)">zakr</div>
       </div>
       <div v-if="isNext" class="next" @click="nextPage()">next</div>
@@ -52,7 +52,7 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
-import { subscribeToTicker } from '~/apis/api'
+import { subscribeToTicker, unsubscribeFormTicker } from '~/apis/api'
 export default {
   name: 'IndexPage',
   data() {
@@ -151,9 +151,8 @@ export default {
   mounted() {
     this.setData()
     this.tickers.forEach(({ ticker }) => {
-      subscribeToTicker(ticker, (price) => {
-        console.log('change',ticker, price.USD);
-      })
+      subscribeToTicker(ticker, newPrice => this.updateTickers(ticker, newPrice)
+      )
     })
   },
   methods: {
@@ -170,9 +169,10 @@ export default {
         price: '-',
       }
       this.tickers.push(currentTicker)
-      subscribeToTicker(currentTicker.ticker, () => {
-        console.log('123')
-      })
+      subscribeToTicker(currentTicker.ticker, newPrice => this.updateTickers(currentTicker.ticker, newPrice))
+    },
+    updateTickers(ticker, price){
+      this.tickers.filter((item) => item.ticker === ticker).price = price
     },
     // async updateTickers() {
     //   if (!this.tickers.length) return
@@ -201,9 +201,9 @@ export default {
         this.graph.push(ticker.price)
       }
     },
-    deleteTicker(item, idx) {
-      this.tickers.splice(idx, 1)
-      clearInterval(item.interval_ticker)
+    deleteTicker(tickerToRemove) {
+      this.tickers = this.tickers.filter(t => t !== tickerToRemove)
+      unsubscribeFormTicker(tickerToRemove.ticker)
       this.sel = null
     },
     selectedTicker(ticker) {
