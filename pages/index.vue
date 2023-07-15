@@ -137,10 +137,15 @@ export default {
   },
   created() {
     this.$store.dispatch('coins/fetchCoinsList')
-    setInterval(() => this.updateTickers(), 5000)
+    this.updateLocalStorage()
   },
   mounted() {
     this.setData()
+    this.tickers.forEach(({ ticker }) => {
+      subscribeToTicker(ticker, (newPrice) =>
+        this.updateTickers(ticker, newPrice)
+      )
+    })
   },
   methods: {
     setData() {
@@ -154,34 +159,47 @@ export default {
         price: '-',
       }
       this.tickers.push(currentTicker)
+      subscribeToTicker(currentTicker.ticker, (newPrice) =>
+        this.updateTickers(currentTicker.ticker, newPrice)
+      )
     },
-    async updateTickers() {
-      if (!this.tickers.length) return
-
-      const data = await loadTicker(this.tickers.map((el) => el.ticker))
-      // currentTicker.interval_ticker = setInterval(async () => {
-
-      this.tickers.forEach((ticker) => {
-        const price = data[ticker.ticker.toUpperCase()]
-        const normalPrice = 1 / price
-        const format =
-          normalPrice > 1 ? normalPrice.toFixed(2) : normalPrice.toFixed(4)
-        ticker.price = format
-      })
-
-      // if (
-      //   this.sel?.ticker === currentTicker.ticker ||
-      //   this.sel?.Symbol === currentTicker.ticker
-      // ) {
-      //   this.graph.push(data.USD)
-      // }
-      // }, 4000)
-
-      this.ticker = ''
+    updateTickers(ticker, price) {
+      this.tickers
+        .filter((item) => item.ticker === ticker)
+        .forEach((t) => {
+          t.price = price
+        })
     },
-    deleteTicker(item, idx) {
-      this.tickers.splice(idx, 1)
-      clearInterval(item.interval_ticker)
+    // async updateTickers() {
+    //   if (!this.tickers.length) return
+
+    //   const data = await loadTicker(this.tickers.map((el) => el.ticker))
+
+    //   this.tickers.forEach((ticker) => {
+    //     const price = data[ticker.ticker.toUpperCase()]
+
+    //     if (!price) {
+    //       ticker.price = '-'
+    //       return
+    //     }
+
+    //     ticker.price = price
+    //     this.drawGraph(ticker)
+    //   })
+
+    //   this.ticker = ''
+    // },
+    drawGraph(ticker) {
+      if (
+        this.sel?.ticker === ticker.ticker ||
+        this.sel?.Symbol === ticker.ticker
+      ) {
+        this.graph.push(ticker.price)
+      }
+    },
+    deleteTicker(tickerToRemove) {
+      this.tickers = this.tickers.filter((t) => t !== tickerToRemove)
+      unsubscribeFormTicker(tickerToRemove.ticker)
       this.sel = null
     },
     selectedTicker(ticker) {
@@ -207,6 +225,17 @@ export default {
         this.page--
       }
     },
+    formattingPrice(price) {
+      if (price === '-') return '-'
+      return price
+      // return price > 1 ? price.toFixed(2) : price.toFixed(4)
+    },
+    // TODO
+    // isFixed(ticker) {
+    //   if (!this.getFixedTickers.filter((item) => item.ticker === ticker.ticker)) {
+    //     return 'unpin'
+    //   }
+    // },
   },
 }
 </script>
