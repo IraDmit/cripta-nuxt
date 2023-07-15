@@ -174,6 +174,7 @@ export default {
         .forEach((t) => {
           t.price = price
         })
+      this.drawGraph(ticker, price)
     },
     // async updateTickers() {
     //   if (!this.tickers.length) return
@@ -194,12 +195,12 @@ export default {
 
     //   this.ticker = ''
     // },
-    drawGraph(ticker) {
+    drawGraph(ticker, price) {
       if (
         this.sel?.ticker === ticker.ticker ||
         this.sel?.Symbol === ticker.ticker
       ) {
-        this.graph.push(ticker.price)
+        this.graph.push(price)
       }
     },
     deleteTicker(tickerToRemove) {
