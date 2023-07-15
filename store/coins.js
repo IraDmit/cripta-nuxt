@@ -11,11 +11,13 @@ export const mutations = {
 }
 
 export const actions = {
-  async fetchCoinsList({ commit }) {
-    const coinlist = await axios.get(
-      `https://min-api.cryptocompare.com/data/all/coinlist?summary=true`
-    )
-    commit('setCoinsList', coinlist.data.Data)
+  async fetchCoinsList({ commit, state }) {
+    if (!state.coinsList) {
+      const coinlist = await axios.get(
+        `https://min-api.cryptocompare.com/data/all/coinlist?summary=true`
+      )
+      commit('setCoinsList', coinlist.data.Data)
+    }
   },
 }
 

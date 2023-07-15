@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import axios from 'axios'
-
-export const loadTicker = async (tickers)=>{
-  console.log(tickers);
-  const { data } = await axios.get(
-    `https://min-api.cryptocompare.com/data/price?fsym=USD&tsyms=${tickers}&api_key=d580e57d5249755e75ac50f672d6a99a3b607971503abb8373efd9ecc6039ac6`
-  )
-  return data
-}
-=======
 // import axios from 'axios'
 const apiKey =
   'd580e57d5249755e75ac50f672d6a99a3b607971503abb8373efd9ecc6039ac6'
@@ -25,9 +14,9 @@ const createSocket = () => {
   }
 }
 
-const subscribeToTickerOnWS = (ticker) => {
+const sendToWS = (ticker, action) => {
   const message = JSON.stringify({
-    action: 'SubAdd',
+    action,
     subs: [`5~CCCAGG~${ticker}~USD`],
   })
   if (socket && socket.readyState === 1) {
@@ -45,11 +34,12 @@ const subscribeToTickerOnWS = (ticker) => {
 export const subscribeToTicker = (ticker, callback) => {
   const subscriber = tickersHendlers.get(ticker, []) || []
   tickersHendlers.set(ticker, [...subscriber, callback])
-  subscribeToTickerOnWS(ticker)
+  sendToWS(ticker, 'SubAdd')
 }
 
 export const unsubscribeFormTicker = (ticker) => {
   tickersHendlers.delete(ticker)
+  sendToWS(ticker, 'SubRemove')
   // const subscriber = tickers.get(ticker, []) ? tickers.get(ticker, []) : []
   // tickers.set(
   //   ticker,
@@ -62,10 +52,9 @@ createSocket()
 if (socket) {
   socket.addEventListener('message', (e) => {
     const { TYPE, PRICE: newPrice, FROMSYMBOL: currency } = JSON.parse(e.data)
-    if (TYPE !== AGGR_INDEX) return
+    if (TYPE !== AGGR_INDEX || !newPrice) return
 
     const handler = tickersHendlers.get(currency) || []
     handler.forEach((func) => func(newPrice))
   })
 }
->>>>>>> fbe5b8f (ws iter 1)

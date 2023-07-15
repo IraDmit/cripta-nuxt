@@ -27,9 +27,9 @@
         @click="selectedTicker(item)"
       >
         <h2>{{ item.ticker }} to USD</h2>
-        <p>{{ item.price }}</p>
-        <button @click.stop="deleteTicker(item, idx)">delete</button>
-        <div class="fix" @click="fixTicker(item)">zakr</div>
+        <p>{{ formattingPrice(item.price) }}</p>
+        <button @click.stop="deleteTicker(item)">delete</button>
+        <div class="fix" @click="fixTicker(item, idx)">zakr</div>
       </div>
       <div v-if="isNext" class="next" @click="nextPage()">next</div>
       <div v-if="isPrev" class="prev" @click="prevPage()">prev</div>
@@ -51,8 +51,8 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
-import { loadTicker } from '~/apis/api'
+import { mapGetters, mapActions } from 'vuex'
+import { subscribeToTicker, unsubscribeFormTicker } from '~/apis/api'
 export default {
   name: 'IndexPage',
   data() {
@@ -70,7 +70,10 @@ export default {
     }
   },
   computed: {
-    ...mapGetters({ getCoinsList: 'coins/getCoinsList' }),
+    ...mapGetters({
+      getCoinsList: 'coins/getCoinsList',
+      getFixedTickers: 'fixed_tickers/getFixedTickers',
+    }),
     maxPage() {
       return Math.ceil(this.tickers.length / this.tickers_on_page)
     },
@@ -148,14 +151,16 @@ export default {
     })
   },
   methods: {
+    ...mapActions({ updateLocalStorage: 'fixed_tickers/updateLocalStorage' }),
     setData() {
       if (process.browser && localStorage && localStorage.fixed_tickers) {
         this.tickers.push(...JSON.parse(localStorage?.fixed_tickers))
+        this.fixed_tickers.push(...JSON.parse(localStorage?.fixed_tickers))
       }
     },
     add() {
       const currentTicker = {
-        ticker: this.ticker,
+        ticker: this.ticker.toUpperCase(),
         price: '-',
       }
       this.tickers.push(currentTicker)
@@ -169,6 +174,7 @@ export default {
         .forEach((t) => {
           t.price = price
         })
+      this.drawGraph(ticker, price)
     },
     // async updateTickers() {
     //   if (!this.tickers.length) return
@@ -189,12 +195,12 @@ export default {
 
     //   this.ticker = ''
     // },
-    drawGraph(ticker) {
+    drawGraph(ticker, price) {
       if (
         this.sel?.ticker === ticker.ticker ||
         this.sel?.Symbol === ticker.ticker
       ) {
-        this.graph.push(ticker.price)
+        this.graph.push(price)
       }
     },
     deleteTicker(tickerToRemove) {
@@ -203,6 +209,7 @@ export default {
       this.sel = null
     },
     selectedTicker(ticker) {
+      if (this.sel === ticker) return
       this.sel = ticker
       this.graph = []
     },
@@ -211,9 +218,16 @@ export default {
       this.ticker = coin.Symbol
       this.add()
     },
-    fixTicker(item) {
-      this.fixed_tickers.push(item)
-      localStorage.fixed_tickers = JSON.stringify(this.fixed_tickers)
+    fixTicker(item, idx) {
+      if (this.fixed_tickers.find((el) => el.ticker === item.ticker)) {
+        this.fixed_tickers.splice(idx, 1)
+        localStorage.fixed_tickers = JSON.stringify(this.fixed_tickers)
+        this.updateLocalStorage()
+      } else {
+        this.fixed_tickers.push(item)
+        localStorage.fixed_tickers = JSON.stringify(this.fixed_tickers)
+        this.updateLocalStorage()
+      }
     },
     nextPage() {
       if (this.page <= this.maxPage) {
@@ -269,6 +283,9 @@ section {
       position: absolute;
       top: 4px;
       right: 4px;
+      &.unpin {
+        background-color: green;
+      }
     }
   }
 }
