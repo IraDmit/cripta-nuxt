@@ -37,7 +37,7 @@
     <section v-if="sel" class="third-row">
       <div class="graph-wrp">
         <h2>{{ sel.ticker || sel.Symbol }} to USD</h2>
-        <div class="graph">
+        <div ref="graph" class="graph">
           <div
             v-for="(bar, idx) in normalizeGraph"
             :key="idx"
@@ -67,6 +67,7 @@ export default {
       fixed_tickers: [],
       tickers_on_page: 6,
       filter: this.$route.query.filter ? this.$route.query.filter : '',
+      count_bar_graph: null,
     }
   },
   computed: {
@@ -201,7 +202,18 @@ export default {
         this.sel?.Symbol === ticker.ticker
       ) {
         this.graph.push(price)
+        // if (this.graph.length >= this.count_bar_graph) {
+        //   this.graph.shift()
+        // }
       }
+    },
+    countBar() {
+      // if (!this.$refs.graph) return
+      setTimeout( () => {
+        console.log(this.$refs.graph)
+      }, 1000)
+
+      // this.count_bar_graph = this.$refs.graph.clientWidth / 40
     },
     deleteTicker(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove)
@@ -212,6 +224,7 @@ export default {
       if (this.sel === ticker) return
       this.sel = ticker
       this.graph = []
+      this.countBar()
     },
     setTicker(coin) {
       this.sel = coin
