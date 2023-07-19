@@ -51,6 +51,7 @@
 </template>
 
 <script>
+import { nextTick } from 'vue'
 import { mapGetters, mapActions } from 'vuex'
 import { subscribeToTicker, unsubscribeFormTicker } from '~/apis/api'
 export default {
@@ -112,7 +113,7 @@ export default {
   },
   watch: {
     ticker() {
-      if (this.ticker.length === 0) {
+      if (!this.ticker) {
         this.matchingTicker = []
         return
       }
@@ -138,6 +139,11 @@ export default {
     filter() {
       this.page = 1
     },
+    sel(newValue) {
+      if (newValue) {
+        this.countBar()
+      }
+    },
   },
   created() {
     this.$store.dispatch('coins/fetchCoinsList')
@@ -145,6 +151,7 @@ export default {
   },
   mounted() {
     this.setData()
+    window.addEventListener('resize', this.countBar)
     this.tickers.forEach(({ ticker }) => {
       subscribeToTicker(ticker, (newPrice) =>
         this.updateTickers(ticker, newPrice)
@@ -168,6 +175,7 @@ export default {
       subscribeToTicker(currentTicker.ticker, (newPrice) =>
         this.updateTickers(currentTicker.ticker, newPrice)
       )
+      this.ticker = null
     },
     updateTickers(ticker, price) {
       this.tickers
@@ -202,18 +210,16 @@ export default {
         this.sel?.Symbol === ticker.ticker
       ) {
         this.graph.push(price)
-        // if (this.graph.length >= this.count_bar_graph) {
-        //   this.graph.shift()
-        // }
+        if (this.graph.length >= this.count_bar_graph) {
+          this.graph.shift()
+        }
       }
     },
     countBar() {
-      // if (!this.$refs.graph) return
-      setTimeout( () => {
-        console.log(this.$refs.graph)
-      }, 1000)
-
-      // this.count_bar_graph = this.$refs.graph.clientWidth / 40
+      nextTick(() => {
+        if (!this.$refs.graph) return
+        this.count_bar_graph = Math.round(this.$refs.graph.clientWidth / 40)
+      })
     },
     deleteTicker(tickerToRemove) {
       this.tickers = this.tickers.filter((t) => t !== tickerToRemove)
@@ -230,6 +236,7 @@ export default {
       this.sel = coin
       this.ticker = coin.Symbol
       this.add()
+      this.graph = []
     },
     fixTicker(item, idx) {
       if (this.fixed_tickers.find((el) => el.ticker === item.ticker)) {

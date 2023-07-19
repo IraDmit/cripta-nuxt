@@ -42,6 +42,7 @@ export default {
   border: 1px solid #ccc;
   border-top: 0px;
   height: fit-content;
+  z-index: 10;
   &.scroll {
     overflow-y: scroll;
     height: 350px;
